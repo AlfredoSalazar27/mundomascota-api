@@ -11,9 +11,10 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB Atlas conectado'))
   .catch(err => console.log('Error de conexión:', err));
 
-// === MODELO USUARIO (TODOS TUS CAMPOS DE REGISTRO) ===
+// === MODELO USUARIO (CON TODOS TUS CAMPOS + usuario + contrasena) ===
 const usuarioSchema = new mongoose.Schema({
   cedula: { type: String, unique: true, required: true },
+  usuario: { type: String, unique: true, required: true },
   nombre: { type: String, required: true },
   primerApellido: String,
   segundoApellido: String,
@@ -24,12 +25,13 @@ const usuarioSchema = new mongoose.Schema({
   canton: String,
   distrito: String,
   direccion: String,
-  fotoPerfil: { type: String, default: "" } // URL de la foto
+  fotoPerfil: { type: String, default: "" },
+  contrasena: { type: String, required: true }
 });
 
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 
-// === RUTAS CRUD USUARIOS ===
+// === RUTAS CRUD ===
 
 // CREATE - Registrar usuario
 app.post('/api/usuarios', async (req, res) => {
@@ -63,27 +65,13 @@ app.get('/api/usuarios', async (req, res) => {
   }
 });
 
-// UPDATE - Actualizar usuario
-app.put('/api/usuarios/:cedula', async (req, res) => {
+// LOGIN - Verificar usuario y contraseña
+app.post('/api/login', async (req, res) => {
   try {
-    const usuario = await Usuario.findOneAndUpdate(
-      { cedula: req.params.cedula },
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!usuario) return res.status(404).json({ success: false });
-    res.json({ success: true, usuario });
-  } catch (err) {
-    res.status(400).json({ success: false });
-  }
-});
-
-// DELETE - Eliminar usuario
-app.delete('/api/usuarios/:cedula', async (req, res) => {
-  try {
-    const result = await Usuario.findOneAndDelete({ cedula: req.params.cedula });
-    if (!result) return res.status(404).json({ success: false });
-    res.json({ success: true, message: "Usuario eliminado" });
+    const { usuario, contrasena } = req.body;
+    const user = await Usuario.findOne({ usuario, contrasena });
+    if (!user) return res.status(401).json({ success: false, message: "Usuario o contraseña incorrecta" });
+    res.json({ success: true, usuario: user });
   } catch (err) {
     res.status(500).json({ success: false });
   }
